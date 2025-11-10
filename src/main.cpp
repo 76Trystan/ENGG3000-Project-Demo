@@ -422,7 +422,7 @@ void loop() // Automatic Mode (state machine)
       {
         yellowStartTime = now;
         currentState = ROAD_WARNING;
-        Serial.println("Boat detected → ROAD_WARNING");
+        Serial.println("Boat detected -> ROAD_WARNING START");
       }
       break;
 
@@ -433,7 +433,7 @@ void loop() // Automatic Mode (state machine)
       {
         yellowStartTime = now;
         currentState = BOAT_WARNING;
-        Serial.println("Road warned → BOAT_WARNING");
+        Serial.println("Road warned -> BOAT_WARNING START");
       }
       break;
 
@@ -466,7 +466,7 @@ void loop() // Automatic Mode (state machine)
         uiBoatYellow = false;
         digitalWrite(yellowLEDPin_B, LOW);
         currentState = BRIDGE_OPEN;
-        Serial.println("Bridge open → Boat GREEN");
+        Serial.println("Bridge open -> Boat GREEN START");
       }
       break;
 
@@ -479,7 +479,7 @@ void loop() // Automatic Mode (state machine)
         if (boatClearTime == 0)
         {
           boatClearTime = now;
-          Serial.println("No boat → 6s wait before closing");
+          Serial.println("No Boat Detected -> 6s wait before closing");
         }
         else if (now - boatClearTime >= CLEAR_WINDOW_MS)
         {
@@ -513,7 +513,7 @@ void loop() // Automatic Mode (state machine)
         uiBoatYellow = false;
         digitalWrite(yellowLEDPin_B, LOW);
         currentState = IDLE;
-        Serial.println("Bridge closed → IDLE");
+        Serial.println("Bridge closed -> IDLE STATE");
       }
       break;
     }
