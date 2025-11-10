@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ESP32 Bridge Controller</title>
+
+  <style>
+    /* ===== base page ===== */
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #141e30, #152c46);
+      color: white;
+      margin: 0;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      margin: 0 0 16px 0;
+      text-align: center;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    /* ===== main container and cards ===== */
+    .panel {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 16px;
+      box-shadow: 0 0 1px #00abff;
+      border-radius: 14px;
+      background: rgba(201, 201, 201, 0.35);
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 0 200px rgba(0, 171, 255, 0.3);
+    }
+
+    .bridge-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== buttons ===== */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 16px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 8px;
+      background: #00abff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: .25s;
+    }
+
+    button:hover {
+      background: #0085cc;
+    }
+
+    button:active {
+      background: #005f99;
+    }
+
+    button:disabled {
+      background: #357aa0;
+      cursor: not-allowed;
+      opacity: .75;
+    }
+
+    #ledStatus {
+      margin-top: 10px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    /* ===== traffic ===== */
+    .traffic-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .tl-box h3 {
+      margin: 8px 0 10px;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    /* mini traffic (vertical) */
+    .mini-traffic {
+      width: 110px;
+      height: 450px;
+      margin: 0 auto;
+      position: relative;
+      border-radius: 18px;
+      padding: 12px;
+      background: linear-gradient(180deg, #111, #0a0a0a 60%);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, .35),
+                  inset 0 0 0 4px #0007,
+                  inset 0 0 0 1px #fff1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mt-bezel {
+      position: absolute;
+      inset: 8px;
+      border-radius: 14px;
+      box-shadow: inset 0 0 0 3px #0008,
+                  inset 0 0 0 1px #ffffff1a;
+      pointer-events: none;
+    }
+
+    .mt-lamp {
+      display: block;
+      width: 80px;
+      height: 70px;
+      border-radius: 999px;
+      background: radial-gradient(40px 40px at 35% 30%, #ffffff22, transparent 55%),
+                  #1f2937;
+      box-shadow: inset 0 6px 10px #000a,
+                  inset 0 -8px 12px #000a,
+                  0 0 0 4px #0008;
+    }
+
+    .mt-lamp + .mt-lamp {
+      margin-top: 10px;
+    }
+
+    .mt-lamp.red.on {
+      background: radial-gradient(44px 44px at 32% 28%, #fff6, transparent 55%),
+                  #ef4444;
+      box-shadow: inset 0 6px 10px #000a,
+                  inset 0 -8px 12px #000a,
+                  0 0 18px 4px rgba(239, 68, 68, .6),
+                  0 0 0 4px #0008;
+    }
+
+    .mt-lamp.yellow.on {
+      background: radial-gradient(44px 44px at 32% 28%, #fff6, transparent 55%),
+                  #f59e0b;
+      box-shadow: inset 0 6px 10px #000a,
+                  inset 0 -8px 12px #000a,
+                  0 0 18px 4px rgba(245, 158, 11, .55),
+                  0 0 0 4px #0008;
+    }
+
+    .mt-lamp.green.on {
+      background: radial-gradient(44px 44px at 32% 28%, #fff6, transparent 55%),
+                  #22c55e;
+      box-shadow: inset 0 6px 10px #000a,
+                  inset 0 -8px 12px #000a,
+                  0 0 18px 4px rgba(34, 197, 94, .55),
+                  0 0 0 4px #0008;
+    }
+
+    /* countdown chips */
+    .mt-timer {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 10px;
+      min-width: 46px;
+      text-align: center;
+      padding: 4px 8px;
+      border-radius: 10px;
+      font: 600 14px/1.2 system-ui, Arial, sans-serif;
+      color: #e5e7eb;
+      background: rgba(2, 6, 23, .7);
+      border: 1px solid rgba(148, 163, 184, .25);
+      backdrop-filter: blur(2px);
+    }
+
+    /* small screens */
+    @media (max-width: 520px) {
+      .traffic-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* mode toggle */
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mode-label {
+      font-weight: 700;
+      color: #dbeafe;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 54px;
+      height: 30px;
+    }
+
+    .switch input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .slider {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #64748b;
+      transition: background .2s, box-shadow .2s;
+      border-radius: 999px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      top: 4px;
+      background: white;
+      transition: transform .2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+    }
+
+    .switch input:checked + .slider {
+      background: #10b981;
+    }
+
+    .switch input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: #cbd5e1;
+      font-size: .9rem;
+      text-align: center;
+    }
+
+    .bridge-root .widget {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Bridge Controller</h1>
+
+  <div class="panel">
+    <!-- TRAFFIC LIGHTS -->
+    <div class="card">
+      <h2>Traffic Lights</h2>
+
+      <div class="traffic-grid">
+        <!-- ROAD BOX -->
+        <div class="tl-box">
+          <h3>Road (Cars & Pedestrians)</h3>
+          <div class="mini-traffic" aria-label="Road traffic signal">
+            <div class="mt-bezel" aria-hidden="true"></div>
+            <div id="road-red"    class="mt-lamp red"    aria-label="Red"></div>
+            <div id="road-yellow" class="mt-lamp yellow" aria-label="Yellow"></div>
+            <div id="road-green"  class="mt-lamp green"  aria-label="Green"></div>
+            <div class="mt-timer" id="road-timer">—</div>
+          </div>
+        </div>
+
+        <!-- SHIP BOX -->
+        <div class="tl-box">
+          <h3>Ship Channel</h3>
+          <div class="mini-traffic" aria-label="Ship traffic signal">
+            <div class="mt-bezel" aria-hidden="true"></div>
+            <div id="ship-red"    class="mt-lamp red"    aria-label="Red"></div>
+            <div id="ship-yellow" class="mt-lamp yellow" aria-label="Yellow"></div>
+            <div id="ship-green"  class="mt-lamp green"  aria-label="Green"></div>
+            <div class="mt-timer" id="ship-timer">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BRIDGE CARD -->
+    <div class="card">
+      <div class="bridge-header">
+        <h2>Bridge</h2>
+        <div class="mode-toggle" title="Toggle Automatic or Manual mode">
+          <span id="modeLabel" class="mode-label">Mode: Automatic</span>
+          <label class="switch">
+            <input type="checkbox" id="modeSwitch" />
+            <span class="slider"></span>
+          </label>
+          <span class="switch-caption">Manual</span>
+        </div>
+      </div>
+
+      <p id="ledStatus">Status: —</p>
+      <div class="btn-row">
+        <button id="Open">OPEN</button>
+        <button id="Close">CLOSE</button>
+      </div>
+
+      <div id="bridgeRoot" class="bridge-root"></div>
+      <p class="hint">Set to Manual to enable OPEN/CLOSE controls.</p>
+    </div>
+
+    <!-- BOAT CARD -->
+    <div class="card">
+      <h2>Boat Status</h2>
+      <p id="boatDistA">Sensor A: --</p>
+      <p id="boatDistB">Sensor B: --</p>
+    </div>
+  </div>
+
+  <script>
+    // ===== VerticalLiftBridgeController class (no module needed) =====
+    class VerticalLiftBridgeController {
+      constructor(rootElementId) {
+        this.root = document.getElementById(rootElementId);
+        this.manualEnabled = false;
+        this.stateText = 'IDLE';
+        this._renderUI();
+      }
+
+      setManualEnabled(enabled) {
+        this.manualEnabled = enabled;
+        const info = this.root.querySelector('#liftInfo');
+        if (info) {
+          info.textContent = enabled
+            ? 'Controls enabled (Manual mode)'
+            : 'Controls locked (Automatic mode)';
+          info.style.color = enabled ? 'lightgreen' : '#cbd5e1';
+        }
+      }
+
+      setStateText(t) {
+        this.stateText = t || 'IDLE';
+        const st = this.root.querySelector('#liftStatus');
+        if (!st) return;
+        st.textContent = this.stateText;
+
+        let c = '#e5e7eb';
+        if (t === 'OPENING') c = '#22c55e';
+        else if (t === 'CLOSING') c = '#ef4444';
+        else if (t === 'BOAT_WARNING' || t === 'ROAD_WARNING') c = '#f59e0b';
+        st.style.color = c;
+      }
+
+      _renderUI() {
+        this.root.innerHTML = `
+          <div class="widget">
+            <h3>Bridge Lift</h3>
+            <p><strong>Status:</strong> <span id="liftStatus">IDLE</span></p>
+            <p id="liftInfo" style="margin-top:6px;color:#cbd5e1">
+              Controls locked (Automatic mode)
+            </p>
+          </div>
+        `;
+      }
+    }
+
+    // ===== Main page logic =====
+    document.addEventListener('DOMContentLoaded', () => {
+      const statusEl = document.getElementById('ledStatus');
+      const baseURL  = window.location.origin;
+
+      const MODE_ENDPOINT    = `${baseURL}/mode`;
+      const OPEN_ENDPOINT    = '/led/on';
+      const CLOSE_ENDPOINT   = '/led/off';
+      const DIST_ENDPOINT    = `${baseURL}/distance`;
+      const STATE_ENDPOINT   = `${baseURL}/state`;
+      const LIGHTS_ENDPOINT  = `${baseURL}/lights`;
+      const TIMERS_ENDPOINT  = `${baseURL}/timers`;
+
+      function sendRequest(endpoint, opts = {}) {
+        return fetch(`${baseURL}${endpoint}`, opts)
+          .then(res => res.text())
+          .then(text => {
+            if (statusEl) statusEl.textContent = `Status: ${text}`;
+            return text;
+          })
+          .catch(err => {
+            console.error(err);
+            if (statusEl) statusEl.textContent = 'Status: Error';
+          });
+      }
+
+      const modeSwitch = document.getElementById('modeSwitch');
+      const modeLabel  = document.getElementById('modeLabel');
+      const btnOpen    = document.getElementById('Open');
+      const btnClose   = document.getElementById('Close');
+      const boatDistA  = document.getElementById('boatDistA');
+      const boatDistB  = document.getElementById('boatDistB');
+
+      // Lamps
+      const road = {
+        red:    document.getElementById('road-red'),
+        yellow: document.getElementById('road-yellow'),
+        green:  document.getElementById('road-green'),
+        timer:  document.getElementById('road-timer'),
+      };
+      const ship = {
+        red:    document.getElementById('ship-red'),
+        yellow: document.getElementById('ship-yellow'),
+        green:  document.getElementById('ship-green'),
+        timer:  document.getElementById('ship-timer'),
+      };
+
+      let isManual = false;
+
+      // Bridge UI
+      const bridge = new VerticalLiftBridgeController('bridgeRoot');
+
+      // Init
+      initMode().then(() => {
+        if (btnOpen)  btnOpen.addEventListener('click', onOpen);
+        if (btnClose) btnClose.addEventListener('click', onClose);
+      });
+
+      async function initMode() {
+        try {
+          const r = await fetch(MODE_ENDPOINT, { method: 'GET' });
+          if (r.ok) {
+            const data = await r.json().catch(() => null);
+            isManual = data && data.value === 'manual';
+          }
+        } catch {}
+
+        if (modeSwitch) modeSwitch.checked = isManual;
+        applyModeUI();
+        await setDeviceMode(isManual ? 'manual' : 'auto');
+
+        if (modeSwitch) modeSwitch.addEventListener('change', onModeToggle);
+
+        startDistancePolling();
+        startStatePolling();
+        startLightsPolling();
+        startTimerPolling();
+      }
+
+      function applyModeUI() {
+        if (modeLabel) modeLabel.textContent = `Mode: ${isManual ? 'Manual' : 'Automatic'}`;
+        if (btnOpen)  btnOpen.disabled  = !isManual;
+        if (btnClose) btnClose.disabled = !isManual;
+        if (bridge.setManualEnabled) bridge.setManualEnabled(isManual);
+      }
+
+      async function onModeToggle() {
+        isManual = modeSwitch.checked;
+        applyModeUI();
+        await setDeviceMode(isManual ? 'manual' : 'auto');
+      }
+
+      function setDeviceMode(value) {
+        return fetch(`${MODE_ENDPOINT}?value=${encodeURIComponent(value)}`, { method: 'POST' })
+          .then(r => r.text())
+          .then(t => console.log('Mode set:', t))
+          .catch(e => console.error('Failed to set mode', e));
+      }
+
+      async function onOpen() {
+        if (!isManual) return;
+        await sendRequest(OPEN_ENDPOINT);
+      }
+
+      async function onClose() {
+        if (!isManual) return;
+        await sendRequest(CLOSE_ENDPOINT);
+      }
+
+      // ===== Distances A & B =====
+      function startDistancePolling() {
+        const poll = async () => {
+          try {
+            const r = await fetch(DIST_ENDPOINT, { cache: 'no-store' });
+            if (!r.ok) throw new Error('bad response');
+            const data = await r.json();
+            const a = typeof data.A === 'number' ? data.A.toFixed(1) : '--';
+            const b = typeof data.B === 'number' ? data.B.toFixed(1) : '--';
+            if (boatDistA) boatDistA.textContent = `Sensor A: ${a} cm`;
+            if (boatDistB) boatDistB.textContent = `Sensor B: ${b} cm`;
+          } catch (e) {
+            if (boatDistA) boatDistA.textContent = `Sensor A: --`;
+            if (boatDistB) boatDistB.textContent = `Sensor B: --`;
+          }
+        };
+        poll();
+        setInterval(poll, 500);
+      }
+
+      // ===== Bridge state =====
+      function startStatePolling() {
+        const poll = async () => {
+          try {
+            const r = await fetch(STATE_ENDPOINT, { cache: 'no-store' });
+            if (!r.ok) throw new Error('bad response');
+            const data = await r.json();
+            const s = typeof data.state === 'string' ? data.state : 'IDLE';
+            if (bridge.setStateText) bridge.setStateText(s);
+            // timers handled separately
+          } catch {}
+        };
+        poll();
+        setInterval(poll, 350);
+      }
+
+      // ===== Lights mirror =====
+      function setLamp(el, on) {
+        if (!el) return;
+        if (on) el.classList.add('on');
+        else    el.classList.remove('on');
+      }
+
+      function startLightsPolling() {
+        const poll = async () => {
+          try {
+            const r = await fetch(LIGHTS_ENDPOINT, { cache: 'no-store' });
+            if (!r.ok) throw new Error('bad response');
+            const data = await r.json();
+            setLamp(road.red,    !!data.road?.red);
+            setLamp(road.yellow, !!data.road?.yellow);
+            setLamp(road.green,  !!data.road?.green);
+            setLamp(ship.red,    !!data.boat?.red);
+            setLamp(ship.yellow, !!data.boat?.yellow);
+            setLamp(ship.green,  !!data.boat?.green);
+          } catch (e) {
+            // ignore errors
+          }
+        };
+        poll();
+        setInterval(poll, 250);
+      }
+
+      // ===== Timers (link ESP32 timing to timer chips) =====
+      function startTimerPolling() {
+        const poll = async () => {
+          try {
+            const r = await fetch(TIMERS_ENDPOINT, { cache: 'no-store' });
+            if (!r.ok) throw new Error('bad response');
+            const data = await r.json();
+
+            const roadMs = (data.road && typeof data.road.remaining_ms === 'number')
+              ? data.road.remaining_ms
+              : 0;
+            const boatMs = (data.boat && typeof data.boat.remaining_ms === 'number')
+              ? data.boat.remaining_ms
+              : 0;
+
+            if (road.timer) {
+              road.timer.textContent =
+                roadMs > 0 ? (roadMs / 1000).toFixed(1) + 's' : '—';
+            }
+            if (ship.timer) {
+              ship.timer.textContent =
+                boatMs > 0 ? (boatMs / 1000).toFixed(1) + 's' : '—';
+            }
+          } catch (e) {
+            // Optionally clear timers on error
+            // if (road.timer) road.timer.textContent = '—';
+            // if (ship.timer) ship.timer.textContent = '—';
+          }
+        };
+
+        poll();
+        setInterval(poll, 200);
+      }
+    });
+  </script>
+</body>
+</html>
